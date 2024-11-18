@@ -7,14 +7,20 @@ from django.views.generic.edit import UpdateView
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from .models import Person
+from ..album.models import Album
+from django.utils import timezone
 
 
 def register_view(request):
     if request.method == 'POST':
+        if request.POST.get('pid', '').equals('') or request.POST.get('default_aid', '').equals(''):
+            raise RuntimeError("not pass pid/default_aid when register")
         form = CustomUserCreationForm(request.POST)
+        album = Album(pid=request.POST.get('pid', ''), aid=request.POST.get('default_aid', ''), description='默认相册', time=timezone.now())
+        album.save()
         if form.is_valid():
             form.save()
-            return redirect('login')  # 重定向到登录页面
+            return redirect('login')
     else:
         form = CustomUserCreationForm()
     return render(request, 'person/register.html', {'form': form})

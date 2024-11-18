@@ -43,7 +43,7 @@ def album_creation(request):
 def album_deletion(request, aid):
     album = get_object_or_404(Album, aid=aid)
     if request.method == 'POST':
-        if album.pid == request.user:
+        if album.pid == request.person.pid:
             album.delete()
             return JsonResponse({'success': True, 'message': '相册已删除'})
         else:
