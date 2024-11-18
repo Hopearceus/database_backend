@@ -7,6 +7,8 @@ from django.utils.translation import gettext_lazy as _
 # Create your models here.
 class Person(AbstractUser):
     pid = models.AutoField(primary_key=True, unique=True)
+    name = models.CharField(max_length=40)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True, 
                              validators=[
                                 RegexValidator(
