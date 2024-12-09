@@ -52,9 +52,10 @@ def album_deletion(request, aid):
 
 def album_detail(request, aid):
     album = get_object_or_404(Album, id=aid)
-    return render(request, 'album/detail.html', {
-        'album': album
-    })
+    # return render(request, 'album/detail.html', {
+    #     'album': album
+    # })
+    return JsonResponse({'album': {_ for _ in album}})
 
 def album_add_picture(request, aid, picture_id):
     album = get_object_or_404(Album, aid=aid, pid=request.person.pid)
@@ -64,4 +65,5 @@ def album_add_picture(request, aid, picture_id):
         except Picture_Album.DoesNotExist:
             picture_album = Picture_Album(pid=picture_id, aid=aid)
             picture_album.save()
-    return redirect('album_detail', aid=album.id)
+    # return redirect('album_detail', aid=album.id)
+    return JsonResponse({'success': True})

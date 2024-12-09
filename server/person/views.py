@@ -13,18 +13,24 @@ from django.utils import timezone
 
 def register_view(request):
     if request.method == 'POST':
-        if request.POST.get('pid', '').equals('') or request.POST.get('default_aid', '').equals(''):
-            raise RuntimeError("not pass pid/default_aid when register")
-        form = CustomUserCreationForm(request.POST)
-        album = Album(pid=request.POST.get('pid', ''), aid=request.POST.get('default_aid', ''), description='默认相册', time=timezone.now())
-        album.save()
-        if form.is_valid():
-            form.save()
-            return redirect('login')
-    else:
-        form = CustomUserCreationForm()
-    return render(request, 'person/register.html', {'form': form})
+        pid = request.POST.get('pid', '')
+        default_aid = request.POST.get('default_aid', '')
+        if not pid or not default_aid:
+            return JsonResponse({'success': False, 'message': '缺少 pid 或 default_aid 参数'}, status=400)
 
+        form = CustomUserCreationForm(request.POST)
+
+        album = Album(pid=pid, aid=default_aid, description='默认相册', time=timezone.now())
+        album.save()
+
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return JsonResponse({'success': True, 'message': '注册成功，已自动登录', 'redirect_url': 'login'})
+        else:
+            return JsonResponse({'success': False, 'message': '表单数据无效', 'errors': form.errors}, status=400)
+    else:
+        return JsonResponse({'success': False, 'message': '请求方法不允许'}, status=405)
 
 def login_view(request):
     if request.method == 'POST':
@@ -36,12 +42,13 @@ def login_view(request):
             if person is not None:
                 login(request, person)
                 next_url = request.GET.get('next', 'home')
-                return redirect(next_url)
+                return JsonResponse({'success': True, 'message': '登录成功', 'redirect_url': next_url})
             else:
-                messages.error(request, '用户名或密码错误')
+                return JsonResponse({'success': False, 'message': '用户名或密码错误'}, status=400)
+        else:
+            return JsonResponse({'success': False, 'message': '表单数据无效', 'errors': form.errors}, status=400)
     else:
-        form = CustomAuthenticationForm()
-    return render(request, 'person/login.html', {'form': form})
+        return JsonResponse({'success': False, 'message': '请求方法不允许'}, status=405)
 
 class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
     model = Person
