@@ -5,124 +5,15 @@ from django.shortcuts import get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponseForbidden
 from .models import Moment, Moment_Person
 from .forms import MomentForm
-from ..person.models import Person
-from ..album.models import Album
-from ..picture.models import Picture, Picture_Moment
-from ..trip.models import Trip, Trip_Person
+from picture.models import Picture, Picture_Moment
+from trip.models import Trip
 from django.contrib.auth.decorators import login_required
-from sensitive_word_filter import DFAFilter
 from django.utils import timezone
+import jwt
 
+SECRET_KEY = json.loads(open('../key.private').read())['SECRET_KEY']
 
-@login_required
-def moment_creation(request, tid):
-    if request.method == 'POST':
-        form = MomentForm(request.POST, request.FILES)
-        if form.is_valid():
-            moment = form.save(commit=False)
-            moment.creator = request.person.pid
-            moment.tid = None
-            moment_person = Moment_Person(pid=request.user.id, mid=moment.mid)
-            moment_person.save()
-            if tid is not None:
-                moment.tid = tid
-            
-            dfa_filter = DFAFilter()
-            filtered_text, has_sensitive_word = dfa_filter(moment.text)
-            if has_sensitive_word:
-                return JsonResponse({
-                    'success': False,
-                    'message': "存在敏感词，请重试！"
-                })
-            moment.text = filtered_text
-            moment.save()
-            return JsonResponse({
-                'success': True,
-                'message': "圈子创建成功",
-                'redirect_url': reverse('moment_detail', kwargs={'mid': moment.mid})
-            })
-        else:
-            return JsonResponse({
-                'success': False,
-                'message': "表单无效，请检查并重新提交"
-            })
-    else:
-        form = MomentForm()
-        return JsonResponse({
-            'success': True,
-            'form': form.as_p()  # Return form as HTML (if needed for front-end rendering)
-        })
-
-@login_required
-def moment_deletion(request, mid):
-    moment = get_object_or_404(Moment, mid=mid, creator=request.user.person)
-    if request.method == 'POST':
-        if moment.creator == request.user:
-            moment.delete()
-            return JsonResponse({'success': True, 'message': '圈子已删除'})
-        else:
-            return JsonResponse({'success': False, 'message': '你没有权限删除此圈子'})
-    return JsonResponse({'success': False, 'message': '请求无效'})
-
-@login_required
-def moment_detail(request, mid):
-    moment = get_object_or_404(Moment, mid=mid)
-    trip = get_object_or_404(Trip, tid=moment.tid)
-    pid_set = list(Picture_Moment.objects.filter(mid=mid).values_list('pid', flat=True).distinct())
-    pic_list = Picture.objects.filter(pid__in=pid_set)
-
-    moment_data = {
-        'mid': moment.mid,
-        'creator': moment.creator,
-        'text': moment.text,
-        'trip': {
-            'tid': trip.tid,
-            'name': trip.name,
-        },
-        'pictures': list(pic_list.values('pid', 'url')),  # Assume Picture model has 'pid' and 'url'
-    }
-    
-    return JsonResponse({
-        'success': True,
-        'moment': moment_data
-    })
-
-@login_required
-def trip_share(request, tid):
-    return moment_creation(request, tid)
-
-@login_required
-def moment_comment(request, mid):
-    if request.method == 'POST':
-        comment_text = request.POST.get('comment')
-        moment = get_object_or_404(Moment, mid=mid)
-        try:
-            moment_person = Moment_Person.objects.get(pid=request.person.pid, mid=moment.mid)
-            moment_person.text = comment_text
-            moment_person.like = request.POST.get('like')
-            moment_person.time = timezone.now()
-            moment_person.save()
-        except Moment_Person.DoesNotExist:
-            moment_person = Moment_Person(pid=request.user.id, mid=moment.mid, text=comment_text, like=None, time=timezone.now())
-            moment_person.save()
-
-        return JsonResponse({
-            'success': True,
-            'message': '评论已保存',
-            'redirect_url': reverse('moment_detail', kwargs={'mid': mid})
-        })
-
-    moment = get_object_or_404(Moment, mid=mid)
-    return JsonResponse({
-        'success': True,
-        'moment': {
-            'mid': moment.mid,
-            'text': moment.text,
-            'creator': moment.creator
-        }
-    })
-
-@login_required
+# @login_required
 def moment_add_picture(request, mid, pid):
     pm = Picture_Moment(mid=mid, pid=pid)
     pm.save()
@@ -132,3 +23,142 @@ def moment_add_picture(request, mid, pid):
         'message': '图片已添加到圈子',
         'redirect_url': reverse('moment_detail', kwargs={'mid': mid})
     })
+
+
+# @login_required
+def get_discover_moments(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            page = data.get('page', 1)
+            page_size = data.get('page_size', 10)
+        except json.JSONDecodeError:
+            return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
+
+        moments = Moment.objects.all().order_by('-time')[page_size * (page - 1):page_size * page]
+        moments_data = [
+            {
+                'mid': moment.mid,
+                'creator': moment.creator.username,
+                'text': moment.text,
+                'time': moment.time.isoformat(),
+                'tid': moment.tid.tid if moment.tid else None,
+            }
+            for moment in moments
+        ]
+
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'moments': moments_data}})
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
+
+# @login_required
+def get_comments(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            mid = data.get('mid')
+        except json.JSONDecodeError:
+            return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
+
+        comments = Moment_Person.objects.filter(mid=mid, content__isnull=False).values('id', 'content', 'pid__username', 'time')
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'comments': list(comments)}})
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
+
+# @login_required
+def add_comment(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            mid = data.get('mid')
+            content = data.get('content')
+        except json.JSONDecodeError:
+            return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
+
+        moment = get_object_or_404(Moment, mid=mid)
+        comment = Moment_Person.objects.create(mid=moment, pid=request.user, content=content, time=timezone.now())
+        return JsonResponse({'code': 0, 'message': '评论添加成功', 'data': {'id': comment.id}})
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
+
+# @login_required
+def delete_comment(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            id = data.get('id')
+        except json.JSONDecodeError:
+            return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
+
+        comment = get_object_or_404(Moment_Person, id=id, content__isnull=False)
+        if comment.pid == request.user:
+            comment.delete()
+            return JsonResponse({'code': 0, 'message': '评论已删除'})
+        else:
+            return JsonResponse({'code': 403, 'message': '你没有权限删除此评论'}, status=403)
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
+
+# @login_required
+def add_moment(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            content = data.get('content')
+            tid = data.get('tid')
+            aid = data.get('aid')
+        except json.JSONDecodeError:
+            return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
+
+        moment = Moment.objects.create(creator=request.user, text=content, tid_id=tid, aid_id=aid, time=timezone.now())
+        return JsonResponse({'code': 0, 'message': '动态发表成功', 'data': {'mid': moment.mid}})
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
+
+# @login_required
+def delete_moment(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            mid = data.get('mid')
+        except json.JSONDecodeError:
+            return JsonResponse({'code': 400, 'message': '��求体不是有效的 JSON 字符串'}, status=400)
+
+        moment = get_object_or_404(Moment, mid=mid)
+        if moment.creator == request.user:
+            moment.delete()
+            return JsonResponse({'code': 0, 'message': '动态已删除'})
+        else:
+            return JsonResponse({'code': 403, 'message': '你没有权限删除此动态'}, status=403)
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
+
+# @login_required
+def get_moments(request):
+    if request.method == 'POST':
+        moments = Moment.objects.filter(creator=request.user).values('mid', 'text', 'time', 'tid', 'aid')
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'moments': list(moments)}})
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
+
+# @login_required
+def get_moment_detail(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            mid = data.get('mid')
+        except json.JSONDecodeError:
+            return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
+
+        moment = get_object_or_404(Moment, mid=mid)
+        moment_data = {
+            'mid': moment.mid,
+            'text': moment.text,
+            'creator': moment.creator.username,
+            'time': moment.time.isoformat(),
+            'tid': moment.tid.tid if moment.tid else None,
+            'aid': moment.aid.aid if moment.aid else None,
+        }
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': moment_data})
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)

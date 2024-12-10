@@ -2,11 +2,15 @@ from . import views
 
 from django.urls import path
 
-urlpattern = [
-    path('creation', views.moment_creation, name='moment_creation'),
-    path('deletion', views.moment_deletion, name='moment_deletion'),
-    path('detail', views.moment_detail, name='moment_detail'),
-    path('trip_share', views.trip_share, name='trip_share'),
-    path('comment', views.moment_comment, name='moment_comment'),
-    path('add_picture', views.moment_add_picture, name='moment_add_picture')
+urlpatterns = [
+    path('comment/list/', views.get_comments, name='get_comments'),
+    path('comment/add/', views.add_comment, name='add_comment'),
+    path('comment/delete/', views.delete_comment, name='delete_comment'),
+    path('add/', views.add_moment, name='add_moment'),
+    path('delete/', views.delete_moment, name='delete_moment'),
+    path('list/', views.get_moments, name='get_moments'),
+    path('detail/', views.get_moment_detail, name='get_moment_detail'),
+    path('discover/', views.get_discover_moments, name='get_discover_moments'),
+    path('add_picture/<int:mid>/<int:pid>/', views.moment_add_picture, name='moment_add_picture'),
+    path('discover/', views.get_discover_moments, name='get_discover_moments'),
 ]

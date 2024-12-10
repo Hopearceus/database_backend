@@ -4,13 +4,12 @@ import os
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponseForbidden
 from .models import Entry
-from ..trip.models import Trip, Trip_Person
+from trip.models import Trip, Trip_Person
 from .forms import EntryForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from sensitive_word_filter import DFAFilter
 
-@login_required
+# @login_required
 def entry_creation(request, tid):
     if request.method == 'POST':
         form = EntryForm(request.POST, request.FILES)
@@ -19,18 +18,18 @@ def entry_creation(request, tid):
             entry.tid = tid
             entry.time = timezone.now()
 
-            dfa_filter = DFAFilter()
-            filtered_place, has_sensitive_word_place = dfa_filter.filter(entry.place)
-            filtered_desc, has_sensitive_word_desc = dfa_filter.filter(entry.description)
+            # dfa_filter = DFAFilter()
+            # filtered_place, has_sensitive_word_place = dfa_filter.filter(entry.place)
+            # filtered_desc, has_sensitive_word_desc = dfa_filter.filter(entry.description)
 
-            if has_sensitive_word_place or has_sensitive_word_desc:
-                return JsonResponse({
-                    'success': False,
-                    'message': '描述或备注中包含敏感词，请修改后再提交。'
-                })
+            # if has_sensitive_word_place or has_sensitive_word_desc:
+            #     return JsonResponse({
+            #         'success': False,
+            #         'message': '描述或备注中包含敏感词，请修改后再提交。'
+            #     })
             
-            entry.place = filtered_place
-            entry.description = filtered_desc
+            # entry.place = filtered_place
+            # entry.description = filtered_desc
             entry.save()
             form.save_m2m()
 
@@ -50,7 +49,7 @@ def entry_creation(request, tid):
                 'message': '表单数据无效，请检查后重新提交。'
             })
 
-@login_required
+# @login_required
 def entry_deletion(request, eid):
     entry = get_object_or_404(Entry, eid=eid)
     if request.method == 'POST':
@@ -68,7 +67,7 @@ def entry_deletion(request, eid):
             })
     return JsonResponse({'success': False, 'message': '请求无效'})
 
-@login_required
+# @login_required
 def entry_detail(request, eid):
     entry = get_object_or_404(Entry, eid=eid)
     
@@ -90,7 +89,7 @@ def entry_detail(request, eid):
         'entry': entry_data
     })
 
-@login_required
+# @login_required
 def entry_modification(request, eid):
     entry = get_object_or_404(Entry, eid=eid)
     if request.method == 'POST':

@@ -9,6 +9,7 @@ class Moment(models.Model):
     creator = models.ForeignKey(Person, on_delete=models.CASCADE)
     text = models.TextField()
     tid = models.ForeignKey(Trip, on_delete=models.SET_NULL, null=True)
+    discover = models.ImageField(upload_to='discover/', null=True)
 
     def __str__(self):
         return self.text[:50]

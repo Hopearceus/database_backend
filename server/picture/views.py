@@ -11,9 +11,9 @@ from .forms import PictureForm
 from ..person.models import Person
 from .models import Picture, Picture_Album
 from ..trip.models import Trip, Trip_Person
-from sensitive_word_filter import DFAFilter
+# from sensitive_word_filter import DFAFilter
 
-@login_required
+# @login_required
 def picture_upload(request):
     if request.method == 'POST':
         form = PictureForm(request.POST, request.FILES)
