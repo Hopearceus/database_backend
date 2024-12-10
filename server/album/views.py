@@ -126,7 +126,7 @@ def delete_album(request):
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
         if album.pid.pid == person.pid:
-            if album.aid == person.default_album.aid:
+            if album.aid == person.default_aid:
                 return JsonResponse({'code': 114514, 'message': '默认相册不允许删除'}, status=403)
             album.delete()
             return JsonResponse({'code': 0, 'message': '相册已删除'})
@@ -173,6 +173,7 @@ def update_album(request):
             data = json.loads(request.body)
             aid = data.get('aid')
             description = data.get('description')
+            
         except json.JSONDecodeError:
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
