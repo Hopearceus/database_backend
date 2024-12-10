@@ -8,8 +8,14 @@ from django.views.decorators.csrf import csrf_exempt
 from .forms import AlbumForm
 from .models import Album
 from picture.models import Picture, Picture_Album
+from person.models import Person
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+
+import jwt
+from django.utils import timezone
+
+SECRET_KEY = json.loads(open('../key.private').read())['SECRET_KEY']
 
 # @csrf_exempt
 # @login_required
@@ -17,8 +23,10 @@ def create_album(request):
     if request.method == 'POST':
         form = AlbumForm(request.POST, request.FILES)
         if form.is_valid():
+            username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+            person = get_object_or_404(Person, username=username)
             album = form.save(commit=False)
-            album.pid = request.user
+            album.pid = person.pid
             album.time = timezone.now()
             album.save()
 
@@ -42,7 +50,9 @@ def create_album(request):
 # @login_required
 def get_album_list(request):
     if request.method == 'POST':
-        albums = Album.objects.filter(pid=request.user).values('aid', 'description', 'time')
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        albums = Album.objects.filter(pid=person.pid).values('aid', 'description', 'time')
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'albums': list(albums)}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
@@ -57,7 +67,9 @@ def get_album_detail(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         album = get_object_or_404(Album, aid=aid)
-        if album.pid == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if album.pid == person.pid:
             album_data = {
                 'aid': album.aid,
                 'description': album.description,
@@ -80,7 +92,9 @@ def delete_album(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         album = get_object_or_404(Album, aid=aid)
-        if album.pid == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if album.pid == person.pid:
             album.delete()
             return JsonResponse({'code': 0, 'message': '相册已删除'})
         else:
@@ -98,7 +112,9 @@ def get_album_photos(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         album = get_object_or_404(Album, aid=aid)
-        if album.pid == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if album.pid == person.pid:
             photos = Picture_Album.objects.filter(aid=album).values('pid', 'image', 'create_time')
             return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'photos': list(photos)}})
         else:
@@ -118,7 +134,9 @@ def update_album(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         album = get_object_or_404(Album, aid=aid)
-        if album.pid == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if album.pid == person.pid:
             album.description = description
             album.save()
             return JsonResponse({'code': 0, 'message': '相册更新成功'})
@@ -139,7 +157,9 @@ def update_photo_description(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         picture = get_object_or_404(Picture, pid=pid)
-        if picture.creator == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if picture.creator == person.pid:
             picture.description = description
             picture.save()
             return JsonResponse({'code': 0, 'message': '照片描述更新成功'})
@@ -159,7 +179,9 @@ def delete_photo(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         picture = get_object_or_404(Picture, pid=pid)
-        if picture.creator == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if picture.creator == person.pid:
             picture.delete()
             return JsonResponse({'code': 0, 'message': '照片已删除'})
         else:
@@ -178,7 +200,9 @@ def upload_photos(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的'}, status=400)
 
         album = get_object_or_404(Album, aid=aid)
-        if album.pid == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if album.pid == person.pid:
             for photo in photos:
                 picture = Picture.objects.create(creator=request.user, image=photo, create_time=timezone.now())
                 Picture_Album.objects.create(pid=picture, aid=album)
@@ -201,7 +225,9 @@ def move_photo_to_album(request):
 
         picture = get_object_or_404(Picture, pid=pid)
         album = get_object_or_404(Album, aid=aid)
-        if picture.creator == request.user and album.pid == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if picture.creator == person.pid and album.pid == person.pid:
             # 删除旧的关系
             Picture_Album.objects.filter(pid=picture).delete()
             # 创建新的关系

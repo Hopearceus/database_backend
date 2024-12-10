@@ -11,13 +11,17 @@ APPEND_SLASH = True
 SECRET_KEY = 'gyuiofggfreaq7890yhuibt243BUISW9324809&soi$%*)w)ns;DGJ*(u)'
 
 DATABASES = {
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.mysql',
+    #     'NAME': 'database',
+    #     'USER': 'test',
+    #     'PASSWORD': '123456',
+    #     'HOST': 'localhost',
+    #     'PORT': '3306',
+    # }
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'database',
-        'USER': 'test',
-        'PASSWORD': '123456',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'db.sqlite3',
     }
 }
 

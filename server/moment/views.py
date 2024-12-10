@@ -6,6 +6,7 @@ from django.http import JsonResponse, HttpResponseForbidden
 from .models import Moment, Moment_Person
 from .forms import MomentForm
 from picture.models import Picture, Picture_Moment
+from person.models import Person
 from trip.models import Trip
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
@@ -76,7 +77,9 @@ def add_comment(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         moment = get_object_or_404(Moment, mid=mid)
-        comment = Moment_Person.objects.create(mid=moment, pid=request.user, content=content, time=timezone.now())
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        comment = Moment_Person.objects.create(mid=moment, pid=person.pid, content=content, time=timezone.now())
         return JsonResponse({'code': 0, 'message': '评论添加成功', 'data': {'id': comment.id}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
@@ -91,7 +94,9 @@ def delete_comment(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         comment = get_object_or_404(Moment_Person, id=id, content__isnull=False)
-        if comment.pid == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if comment.pid == person.pid:
             comment.delete()
             return JsonResponse({'code': 0, 'message': '评论已删除'})
         else:
@@ -110,7 +115,9 @@ def add_moment(request):
         except json.JSONDecodeError:
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
-        moment = Moment.objects.create(creator=request.user, text=content, tid_id=tid, aid_id=aid, time=timezone.now())
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        moment = Moment.objects.create(creator=person.pid, text=content, tid_id=tid, aid_id=aid, time=timezone.now())
         return JsonResponse({'code': 0, 'message': '动态发表成功', 'data': {'mid': moment.mid}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
@@ -125,7 +132,9 @@ def delete_moment(request):
             return JsonResponse({'code': 400, 'message': '��求体不是有效的 JSON 字符串'}, status=400)
 
         moment = get_object_or_404(Moment, mid=mid)
-        if moment.creator == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if moment.creator == person.pid:
             moment.delete()
             return JsonResponse({'code': 0, 'message': '动态已删除'})
         else:
@@ -136,7 +145,10 @@ def delete_moment(request):
 # @login_required
 def get_moments(request):
     if request.method == 'POST':
-        moments = Moment.objects.filter(creator=request.user).values('mid', 'text', 'time', 'tid', 'aid')
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        # moments = Moment.objects.filter(creator=person.pid).values('mid', 'text', 'time', 'tid', 'aid')
+        moments = Moment.objects.filter(creator=person.pid).values('mid', 'text', 'time', 'tid')
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'moments': list(moments)}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)

@@ -126,7 +126,6 @@ def get_user_profile(request):
     if request.method == 'GET':
         # person = get_object_or_404(Person, pid=request.user.id)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
-        # print(username)
         person = get_object_or_404(Person, username=username)
         # print(person)
         profile_data = {

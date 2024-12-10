@@ -10,6 +10,7 @@ class Moment(models.Model):
     text = models.TextField()
     tid = models.ForeignKey(Trip, on_delete=models.SET_NULL, null=True)
     discover = models.ImageField(upload_to='discover/', null=True)
+    time = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.text[:50]
