@@ -11,6 +11,9 @@ from .models import Trip, Trip_Person
 from .forms import TripForm, Trip_PersonForm
 # from sensitive_word_filter import DFAFilter
 
+import jwt
+
+SECRET_KEY = SECRET_KEY = json.loads(open('../key.private').read())['SECRET_KEY']
 # @login_required
 def trip_detail(request):
     if request.method == 'POST':
@@ -21,7 +24,9 @@ def trip_detail(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         trip = get_object_or_404(Trip, tid=tid)
-        if not Trip_Person.objects.filter(tid=tid, pid=request.user).exists():
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if not Trip_Person.objects.filter(tid=tid, pid=person.pid).exists():
             return JsonResponse({'code': 403, 'message': '你没有权限查看此行程'}, status=403)
 
         entry_list = Entry.objects.filter(tid=tid).values('eid', 'title')
@@ -50,8 +55,10 @@ def create_trip(request):
         if not name or not description:
             return JsonResponse({'code': 400, 'message': '缺少必填字段'}, status=400)
 
-        trip = Trip.objects.create(name=name, description=description, time=time, creator=request.user)
-        Trip_Person.objects.create(tid=trip, pid=request.user, notes='')
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        trip = Trip.objects.create(name=name, description=description, time=time, creator=person)
+        Trip_Person.objects.create(tid=trip, pid=person, notes='')
 
         return JsonResponse({'code': 0, 'message': '行程创建成功', 'data': {'tid': trip.tid}})
     else:
@@ -68,7 +75,9 @@ def delete_trip(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         trip = get_object_or_404(Trip, tid=tid)
-        if trip.creator == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if trip.creator == person.pid:
             trip.delete()
             return JsonResponse({'code': 0, 'message': '行程已删除'})
         else:
@@ -79,7 +88,9 @@ def delete_trip(request):
 # @login_required
 def get_trip_list(request):
     if request.method == 'POST':
-        trips = Trip.objects.filter(creator=request.user).values('tid', 'name', 'description', 'time')
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        trips = Trip.objects.filter(creator=person.pid).values('tid', 'name', 'description', 'time')
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'trips': list(trips)}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
@@ -97,7 +108,9 @@ def update_trip(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         trip = get_object_or_404(Trip, tid=tid)
-        if trip.creator == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if trip.creator == person.pid:
             trip.name = name
             trip.description = description
             trip.save()
@@ -120,7 +133,9 @@ def add_trip_record(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         trip = get_object_or_404(Trip, tid=tid)
-        if Trip_Person.objects.filter(tid=trip, pid=request.user).exists():
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if Trip_Person.objects.filter(tid=trip, pid=person.pid).exists():
             entry = Entry.objects.create(tid=trip, title=title, description=description, time=timezone.now())
             return JsonResponse({'code': 0, 'message': '记录添加成功', 'data': {'eid': entry.eid}})
         else:
@@ -139,7 +154,9 @@ def delete_trip_record(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         entry = get_object_or_404(Entry, eid=eid)
-        if entry.tid.creator == request.user:
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if entry.tid.creator == person.pid:
             entry.delete()
             return JsonResponse({'code': 0, 'message': '记录已删除'})
         else:
@@ -157,7 +174,9 @@ def get_record_detail(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         entry = get_object_or_404(Entry, eid=eid)
-        if Trip_Person.objects.filter(tid=entry.tid, pid=request.user).exists():
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists():
             entry_data = {
                 'eid': entry.eid,
                 'title': entry.title,
@@ -183,7 +202,9 @@ def update_record(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         entry = get_object_or_404(Entry, eid=eid)
-        if Trip_Person.objects.filter(tid=entry.tid, pid=request.user).exists():
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        if Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists():
             entry.title = title
             entry.description = description
             entry.save()

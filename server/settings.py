@@ -78,6 +78,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://113.44.213.129:5172'
 ]
 
 LOGGING = {
@@ -99,4 +100,8 @@ LOGGING = {
 }
 
 DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '113.44.213.129']
+
+MEDIA_ROOT = '/img/'
+MEDIA_URL = '/img/'
+base_url = '113.44.213.129:5172'

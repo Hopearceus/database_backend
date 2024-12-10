@@ -6,11 +6,11 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
-from ..moment.models import Moment, Moment_Person
+from moment.models import Moment, Moment_Person
 from .forms import PictureForm
-from ..person.models import Person
+from person.models import Person
 from .models import Picture, Picture_Album
-from ..trip.models import Trip, Trip_Person
+from trip.models import Trip, Trip_Person
 # from sensitive_word_filter import DFAFilter
 
 # @login_required

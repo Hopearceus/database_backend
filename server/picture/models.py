@@ -6,6 +6,8 @@ class Picture(models.Model):
     creator = models.ForeignKey('person.Person', on_delete=models.SET_DEFAULT, default=0)
     create_time = models.DateField(default=timezone.now)
     file_name = models.CharField(max_length=255)
+    url = models.CharField(max_length=255)
+    description = models.TextField(null=True)
     image = models.ImageField(upload_to='images/')
 
 class Picture_Album(models.Model):

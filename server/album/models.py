@@ -6,4 +6,4 @@ class Album(models.Model):
     aid = models.AutoField(primary_key=True)
     pid = models.ForeignKey('person.Person', on_delete=models.CASCADE)
     description = models.TextField()
-    time = models.DateField(timezone.now)
+    time = models.DateTimeField(timezone.now)

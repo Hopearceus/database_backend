@@ -111,7 +111,10 @@ def add_moment(request):
             data = json.loads(request.body)
             content = data.get('content')
             tid = data.get('tid')
-            aid = data.get('aid')
+            from person.models import Person
+            username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+            person = get_object_or_404(Person, username=username)
+            aid = data.get('aid') if data.get('aid') else person.default_aid
         except json.JSONDecodeError:
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
@@ -129,7 +132,7 @@ def delete_moment(request):
             data = json.loads(request.body)
             mid = data.get('mid')
         except json.JSONDecodeError:
-            return JsonResponse({'code': 400, 'message': '��求体不是有效的 JSON 字符串'}, status=400)
+            return JsonResponse({'code': 400, 'message': '不是有效的 JSON 字符串'}, status=400)
 
         moment = get_object_or_404(Moment, mid=mid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']

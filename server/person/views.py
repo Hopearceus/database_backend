@@ -38,11 +38,15 @@ def register_view(request):
             return JsonResponse({'code': 400, 'message': '用户名已存在'}, status=400)
         
         user = Person.objects.create_user(username=username, email=email, password=password)
+        from album.models import Album
+        default_album = Album.objects.create(pid=user, description='默认相册', time=timezone.now())
+        user.default_aid = default_album.aid
+        user.save()
         login(request, user)
         data = {}
         data['username'] = user.username
         data['email'] = user.email
-        return JsonResponse({'code': 0, 'message': '注册成功，已自动登录', 'data': data})
+        return JsonResponse({'code': 0, 'message': '注册成功', 'data': data})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
 
@@ -168,10 +172,30 @@ def update_user_profile(request):
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
 
+from django.core.files.storage import FileSystemStorage
+
+from picture.models import Picture
+
+import os
+import settings
+media_root = settings.MEDIA_ROOT
+base_url = settings.base_url
+
 def upload_avatar(request):
+
+    print("\n")
+    print("请求方法:", request.method)
+    print("请求头:", request.headers)
+    print("FILES:", request.FILES)
+    
     if request.method == 'POST':
-        person = request.user
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
         avatar = request.FILES.get('avatar')
+        avatar_name = FileSystemStorage(location=os.path.join(media_root, username, 'avatar/')).save(avatar.name, avatar)
+        avatar_url = base_url + settings.MEDIA_URL + username + '/avatar/' + avatar_name
+        print(avatar)
+        Picture.objects.create(pid=person.pid, creator=person, url=avatar_url, description='头像', create_time=timezone.now(), file_name=avatar_name)
         if avatar:
             person.avatar = avatar
             person.save()
@@ -179,4 +203,5 @@ def upload_avatar(request):
         else:
             return JsonResponse({'code': 400, 'message': '没有上传头像文件'}, status=400)
     else:
+        print("adasd")
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)   

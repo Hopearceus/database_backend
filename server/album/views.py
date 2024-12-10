@@ -17,33 +17,35 @@ from django.utils import timezone
 
 SECRET_KEY = json.loads(open('../key.private').read())['SECRET_KEY']
 
-# @csrf_exempt
 # @login_required
 def create_album(request):
     if request.method == 'POST':
-        form = AlbumForm(request.POST, request.FILES)
-        if form.is_valid():
-            username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
-            person = get_object_or_404(Person, username=username)
-            album = form.save(commit=False)
-            album.pid = person.pid
-            album.time = timezone.now()
-            album.save()
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
 
-            # 处理封面图片和照片
-            cover_image = request.FILES.get('coverImage')
-            if cover_image:
-                cover_picture = Picture.objects.create(creator=request.user, image=cover_image, create_time=timezone.now())
-                Picture_Album.objects.create(pid=cover_picture, aid=album)
+        data = request.POST
+        print(data)
+        album_name = data.get('albumName')
+        print(album_name)
+        description = data.get('description', '')
+        trip_id = data.get('tripId')
 
-            photos = request.FILES.getlist('photos')
-            for photo in photos:
-                picture = Picture.objects.create(creator=request.user, image=photo, create_time=timezone.now())
-                Picture_Album.objects.create(pid=picture, aid=album)
+        if not album_name:
+            return JsonResponse({'code': 400, 'message': '缺少必填字段 albumName'}, status=400)
 
-            return JsonResponse({'code': 0, 'message': '相册创建成功', 'data': {'aid': album.aid}})
-        else:
-            return JsonResponse({'code': 400, 'message': '表单数据无效', 'errors': form.errors}, status=400)
+        album = Album.objects.create(pid=person.pid, description=description, time=timezone.now())
+
+        cover_image = request.FILES.get('coverImage')
+        if cover_image:
+            cover_picture = Picture.objects.create(creator=person.pid, image=cover_image, create_time=timezone.now())
+            Picture_Album.objects.create(pid=cover_picture.pid, aid=album.aid)
+
+        photos = request.FILES.getlist('photos')
+        for photo in photos:
+            picture = Picture.objects.create(creator=person.pid, image=photo, create_time=timezone.now())
+            Picture_Album.objects.create(pid=picture.pid, aid=album.aid)
+
+        return JsonResponse({'code': 0, 'message': '相册创建成功', 'data': {'aid': album.aid}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
 
@@ -208,7 +210,7 @@ def upload_photos(request):
                 Picture_Album.objects.create(pid=picture, aid=album)
             return JsonResponse({'code': 0, 'message': '照片上传成功'})
         else:
-            return JsonResponse({'code': 403, 'message': '你没有权限上传此相册的照片'}, status=403)
+            return JsonResponse({'code': 403, 'message': '你没有权限上传此相���的照片'}, status=403)
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
 
@@ -228,9 +230,7 @@ def move_photo_to_album(request):
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
         if picture.creator == person.pid and album.pid == person.pid:
-            # 删除旧的关系
             Picture_Album.objects.filter(pid=picture).delete()
-            # 创建新的关系
             Picture_Album.objects.create(pid=picture, aid=album)
             return JsonResponse({'code': 0, 'message': '照片已移入相册'})
         else:
