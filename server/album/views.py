@@ -225,7 +225,12 @@ def delete_photo(request):
         picture = get_object_or_404(Picture, pid=pid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
+        album = Picture_Album.objects.filter(pid=picture).values('aid')
+        album = Album.objects.get(aid=album[0]['aid'])
         if picture.creator.pid == person.pid:
+            if album.cover_url == picture.url:
+                album.cover_url = ''
+                album.save()
             picture.delete()
             return JsonResponse({'code': 0, 'message': '照片已删除'})
         else:
