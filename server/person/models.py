@@ -9,7 +9,7 @@ class Person(AbstractUser):
     pid = models.AutoField(primary_key=True)
     username = models.CharField(max_length=40, unique=True)
     default_aid = models.IntegerField(null=True)
-    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+    avatar_url = models.CharField(max_length=200, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True, 
                              validators=[
                                 RegexValidator(

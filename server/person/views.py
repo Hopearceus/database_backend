@@ -1,7 +1,7 @@
 from django.contrib.auth import login, authenticate
 from django.shortcuts import render, get_object_or_404
 from django.contrib import messages
-from .forms import CustomUserCreationForm, CustomAuthenticationForm, UserProfileForm
+# from .forms import CustomUserCreationForm, CustomAuthenticationForm, UserProfileForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.edit import UpdateView
 from django.urls import path, reverse_lazy
@@ -102,29 +102,6 @@ def fetch_user_account_and_permissions(request):
     return JsonResponse({'code': 0, 'message': '获取成功', 'data': data})
 
 from django.contrib.auth.decorators import login_required
-class UserProfileUpdateView(LoginRequiredMixin, UpdateView):
-    model = Person
-    form_class = UserProfileForm
-    template_name = 'person/profile.html'
-    success_url = reverse_lazy('profile')
-
-    def get_object(self, queryset=None):
-        return self.request.person
-
-    def is_ajax(self):
-        return self.request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        if self.is_ajax():
-            return JsonResponse({'success': True})
-        return response
-
-    def form_invalid(self, form):
-        response = super().form_invalid(form)
-        if self.is_ajax():
-            return JsonResponse({'success': False, 'errors': form.errors})
-        return response
 
 def get_user_profile(request):
     if request.method == 'GET':
@@ -139,7 +116,7 @@ def get_user_profile(request):
             'description': person.description,
             'birthday': person.birthday,
             'gender': person.gender,
-            'avatar': person.avatar.url if person.avatar else None,
+            'avatar': person.avatar_url if person.avatar_url else None,
         }
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': profile_data})
     else:
@@ -149,7 +126,8 @@ def update_user_profile(request):
     if request.method == 'PUT':
         try:
             data = json.loads(request.body)
-            person = request.user
+            username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+            person = get_object_or_404(Person, username=username)
             person.username = data.get('username', person.username)
             person.email = data.get('email', person.email)
             person.phone = data.get('phone', person.phone)
@@ -164,7 +142,7 @@ def update_user_profile(request):
                 'description': person.description,
                 'birthday': person.birthday,
                 'gender': person.gender,
-                'avatar': person.avatar.url if person.avatar else None,
+                'avatar': person.avatar_url if person.avatar_url else None,
             }
             return JsonResponse({'code': 0, 'message': '更新成功', 'data': updated_data})
         except json.JSONDecodeError:
@@ -182,11 +160,6 @@ media_root = settings.MEDIA_ROOT
 base_url = settings.base_url
 
 def upload_avatar(request):
-
-    print("\n")
-    print("请求方法:", request.method)
-    print("请求头:", request.headers)
-    print("FILES:", request.FILES)
     
     if request.method == 'POST':
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
@@ -194,12 +167,11 @@ def upload_avatar(request):
         avatar = request.FILES.get('avatar')
         avatar_name = FileSystemStorage(location=os.path.join(media_root, username, 'avatar/')).save(avatar.name, avatar)
         avatar_url = base_url + settings.MEDIA_URL + username + '/avatar/' + avatar_name
-        print(avatar)
-        Picture.objects.create(pid=person.pid, creator=person, url=avatar_url, description='头像', create_time=timezone.now(), file_name=avatar_name)
+        Picture.objects.create(creator=person, url=avatar_url, description='头像', create_time=timezone.now(), file_name=avatar_name)
         if avatar:
-            person.avatar = avatar
+            person.avatar_url = avatar_url
             person.save()
-            return JsonResponse({'code': 0, 'message': '头像上传成功', 'data': {'url': person.avatar.url}})
+            return JsonResponse({'code': 0, 'message': '头像上传成功', 'data': {'url': person.avatar_url}})
         else:
             return JsonResponse({'code': 400, 'message': '没有上传头像文件'}, status=400)
     else:
