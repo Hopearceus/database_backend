@@ -125,7 +125,9 @@ def delete_album(request):
         album = get_object_or_404(Album, aid=aid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if album.pid == person.pid:
+        if album.pid.pid == person.pid:
+            if album.aid == person.default_album.aid:
+                return JsonResponse({'code': 114514, 'message': '默认相册不允许删除'}, status=403)
             album.delete()
             return JsonResponse({'code': 0, 'message': '相册已删除'})
         else:
@@ -177,7 +179,7 @@ def update_album(request):
         album = get_object_or_404(Album, aid=aid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if album.pid == person.pid:
+        if album.pid.pid == person.pid:
             album.description = description
             album.save()
             return JsonResponse({'code': 0, 'message': '相册更新成功'})
@@ -200,7 +202,8 @@ def update_photo_description(request):
         picture = get_object_or_404(Picture, pid=pid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if picture.creator == person.pid:
+        
+        if picture.creator.pid == person.pid:
             picture.description = description
             picture.save()
             return JsonResponse({'code': 0, 'message': '照片描述更新成功'})
@@ -222,7 +225,7 @@ def delete_photo(request):
         picture = get_object_or_404(Picture, pid=pid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if picture.creator == person.pid:
+        if picture.creator.pid == person.pid:
             picture.delete()
             return JsonResponse({'code': 0, 'message': '照片已删除'})
         else:
@@ -243,36 +246,14 @@ def upload_photos(request):
         album = get_object_or_404(Album, aid=aid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if album.pid == person.pid:
+        if album.pid.pid == person.pid:
             for photo in photos:
-                picture = Picture.objects.create(creator=request.user, image=photo, create_time=timezone.now())
+                photo_name = FileSystemStorage(location=os.path.join(media_root,username,'album/',album.name)).save(photo.name,photo)
+                photo_url = base_url + settings.MEDIA_URL + username + '/album/' + album.name + '/' + photo_name
+                picture = Picture.objects.create(creator=person, url=photo_url, file_name=photo_name, image=photo, create_time=timezone.now())
                 Picture_Album.objects.create(pid=picture, aid=album)
             return JsonResponse({'code': 0, 'message': '照片上传成功'})
         else:
-            return JsonResponse({'code': 403, 'message': '你没有权限上传此相���的照片'}, status=403)
-    else:
-        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
-
-# @csrf_exempt
-# @login_required
-def move_photo_to_album(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            pid = data.get('pid')
-            aid = data.get('aid')
-        except json.JSONDecodeError:
-            return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
-
-        picture = get_object_or_404(Picture, pid=pid)
-        album = get_object_or_404(Album, aid=aid)
-        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
-        person = get_object_or_404(Person, username=username)
-        if picture.creator == person.pid and album.pid == person.pid:
-            Picture_Album.objects.filter(pid=picture).delete()
-            Picture_Album.objects.create(pid=picture, aid=album)
-            return JsonResponse({'code': 0, 'message': '照片已移入相册'})
-        else:
-            return JsonResponse({'code': 403, 'message': '你没有权限移动此照片'}, status=403)
+            return JsonResponse({'code': 403, 'message': '你没有权限上传此相册的照片'}, status=403)
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
