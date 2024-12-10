@@ -1,6 +1,7 @@
 import os
 import json
 
+from django.core.files.storage import FileSystemStorage
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_exempt
@@ -14,6 +15,11 @@ from django.utils import timezone
 
 import jwt
 from django.utils import timezone
+import os
+
+import settings
+media_root = settings.MEDIA_ROOT
+base_url = settings.base_url
 
 SECRET_KEY = json.loads(open('../key.private').read())['SECRET_KEY']
 
@@ -22,27 +28,28 @@ def create_album(request):
     if request.method == 'POST':
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-
-        data = request.POST
-        print(data)
-        album_name = data.get('albumName')
-        print(album_name)
-        description = data.get('description', '')
-        trip_id = data.get('tripId')
+        
+        album_name = datrequest.POSTa.get('albumName')
+        description = request.POST.get('description', '')
+        trip_id = request.POST.get('tripId')
 
         if not album_name:
             return JsonResponse({'code': 400, 'message': '缺少必填字段 albumName'}, status=400)
 
-        album = Album.objects.create(pid=person.pid, description=description, time=timezone.now())
-
-        cover_image = request.FILES.get('coverImage')
+        album = Album.objects.create(pid=person.pid, name=albumName, description=description, time=timezone.now())
+        
         if cover_image:
-            cover_picture = Picture.objects.create(creator=person.pid, image=cover_image, create_time=timezone.now())
+            cover_image = request.FILES.get('coverImage')
+            cover_name = FileSystemStorage(location=os.path.join(media_root, username, 'album/', album.name)).save(cover_image.name, cover_image)
+            cover_url = base_url + settings.MEDIA_URL + username + '/album/' + album.name + '/' + cover_name
+            cover_picture = Picture.objects.create(creator=person, url=cover_url, file_name=cover_name, create_time=timezone.now())
             Picture_Album.objects.create(pid=cover_picture.pid, aid=album.aid)
 
         photos = request.FILES.getlist('photos')
         for photo in photos:
-            picture = Picture.objects.create(creator=person.pid, image=photo, create_time=timezone.now())
+            photo_name = FileSystemStorage(location=os.path.join(media_root, username, 'album/', album.name)).save(photo.name, photo)
+            photo_url = base_url + settings.MEDIA_URL + username + '/album/' + album.name + '/' + photo_name
+            picture = Picture.objects.create(creator=person, url=photo_url, file_name=photo_name, create_time=timezone.now())
             Picture_Album.objects.create(pid=picture.pid, aid=album.aid)
 
         return JsonResponse({'code': 0, 'message': '相册创建成功', 'data': {'aid': album.aid}})
@@ -54,11 +61,26 @@ def get_album_list(request):
     if request.method == 'POST':
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        albums = Album.objects.filter(pid=person.pid).values('aid', 'description', 'time')
-        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'albums': list(albums)}})
+        albums = Album.objects.filter(pid=person.pid)
+
+        album_list = []
+        for album in albums:
+            photo_count = Picture_Album.objects.filter(aid=album.aid).count()
+            album_data = {
+                'aid': album.aid,
+                'albumName': album.name,
+                'description': album.description,
+                'coverUrl': album.cover_url,
+                'photoCount': photo_count,
+                'createdAt': album.time.strftime('%Y-%m-%d %H:%M:%S'),
+                'creatorId': person.pid,
+                'creatorName': person.username
+            }
+            album_list.append(album_data)
+
+        return JsonResponse({'code': 200, 'data': {'albums': album_list}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
-
 # @login_required
 def get_album_detail(request):
     if request.method == 'POST':

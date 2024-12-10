@@ -142,7 +142,7 @@ def update_user_profile(request):
                 'description': person.description,
                 'birthday': person.birthday,
                 'gender': person.gender,
-                'avatar': person.avatar_url if person.avatar_url else None,
+                'avatar': 'http://' + person.avatar_url if person.avatar_url else None,
             }
             return JsonResponse({'code': 0, 'message': '更新成功', 'data': updated_data})
         except json.JSONDecodeError:
