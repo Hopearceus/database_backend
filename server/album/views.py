@@ -29,28 +29,29 @@ def create_album(request):
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
         
-        album_name = datrequest.POSTa.get('albumName')
+        album_name = request.POST.get('albumName')
         description = request.POST.get('description', '')
         trip_id = request.POST.get('tripId')
 
         if not album_name:
             return JsonResponse({'code': 400, 'message': '缺少必填字段 albumName'}, status=400)
 
-        album = Album.objects.create(pid=person.pid, name=albumName, description=description, time=timezone.now())
+        album = Album.objects.create(pid=person, name=album_name, description=description, time=timezone.now())
         
+        cover_image = request.FILES.get('coverImage')
         if cover_image:
-            cover_image = request.FILES.get('coverImage')
             cover_name = FileSystemStorage(location=os.path.join(media_root, username, 'album/', album.name)).save(cover_image.name, cover_image)
             cover_url = base_url + settings.MEDIA_URL + username + '/album/' + album.name + '/' + cover_name
             cover_picture = Picture.objects.create(creator=person, url=cover_url, file_name=cover_name, create_time=timezone.now())
-            Picture_Album.objects.create(pid=cover_picture.pid, aid=album.aid)
-
+            Picture_Album.objects.create(pid=cover_picture, aid=album)
+            album.cover_url = cover_url
+            album.save()
         photos = request.FILES.getlist('photos')
         for photo in photos:
             photo_name = FileSystemStorage(location=os.path.join(media_root, username, 'album/', album.name)).save(photo.name, photo)
             photo_url = base_url + settings.MEDIA_URL + username + '/album/' + album.name + '/' + photo_name
             picture = Picture.objects.create(creator=person, url=photo_url, file_name=photo_name, create_time=timezone.now())
-            Picture_Album.objects.create(pid=picture.pid, aid=album.aid)
+            Picture_Album.objects.create(pid=picture, aid=album)
 
         return JsonResponse({'code': 0, 'message': '相册创建成功', 'data': {'aid': album.aid}})
     else:
@@ -93,11 +94,17 @@ def get_album_detail(request):
         album = get_object_or_404(Album, aid=aid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if album.pid == person.pid:
+        if album.pid.pid == person.pid:
+            photo_count = Picture_Album.objects.filter(aid=album.aid).count()
             album_data = {
                 'aid': album.aid,
+                'albumName': album.name,
                 'description': album.description,
-                'time': album.time.isoformat(),
+                'coverUrl': album.cover_url,
+                'photoCount': photo_count,
+                'createdAt': album.time.strftime('%Y-%m-%d %H:%M:%S'),
+                'creatorId': person.pid,
+                'creatorName': person.username
             }
             return JsonResponse({'code': 0, 'message': '获取成功', 'data': album_data})
         else:
@@ -138,9 +145,19 @@ def get_album_photos(request):
         album = get_object_or_404(Album, aid=aid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if album.pid == person.pid:
-            photos = Picture_Album.objects.filter(aid=album).values('pid', 'image', 'create_time')
-            return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'photos': list(photos)}})
+        if album.pid.pid == person.pid:
+            photos = Picture_Album.objects.filter(aid=album).values('pid')
+            photos = Picture.objects.filter(pid__in=photos)
+            photo_list = []
+            for photo in photos:
+                photo_data = {
+                    'pid': photo.pid,
+                    'url': photo.url,
+                    'uploadTime': photo.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'description': photo.description
+                }
+                photo_list.append(photo_data)
+            return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'photos': photo_list}})
         else:
             return JsonResponse({'code': 403, 'message': '你没有权限查看此相册的照片'}, status=403)
     else:
