@@ -212,3 +212,13 @@ def search_moment(request):
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'moments': moment_list}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
+
+def moment_num(request):
+    if request.method == 'GET':
+        moments = Moment.objects.all().count()
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'num': moments}})
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
+
+
+
