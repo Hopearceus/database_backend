@@ -10,6 +10,7 @@ from picture.models import Picture, Picture_Moment, Picture_Album
 from person.models import Person
 from album.models import Album
 from trip.models import Trip
+from comment.models import Comment
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 import jwt
@@ -67,8 +68,20 @@ def get_comments(request):
         except json.JSONDecodeError:
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
-        comments = Moment_Person.objects.filter(mid=mid, content__isnull=False).values('id', 'content', 'pid__username', 'time')
-        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'comments': list(comments)}})
+        # comments = Moment_Person.objects.filter(mid=mid, content__isnull=False).values('id', 'content', 'pid__username', 'time')
+        comments = Comment.objects.filter(mid=mid)
+        comment_list = []
+        for comment in comments:
+            comment_list.append({
+                'cid': comment.cid,
+                'mid': comment.mid.mid,
+                'content': comment.content,
+                'userId': comment.pid.pid,
+                'username': comment.pid.username,
+                'userAvatar': comment.pid.avatar_url,
+                'createTime': comment.time.strftime('%Y-%m-%d %H:%M:%S')
+            })
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'comments': comment_list}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
 
@@ -85,8 +98,9 @@ def add_comment(request):
         moment = get_object_or_404(Moment, mid=mid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        comment = Moment_Person.objects.create(mid=moment, pid=person, content=content, time=timezone.now())
-        return JsonResponse({'code': 0, 'message': '评论添加成功', 'data': {'id': comment.id}})
+        # comment = Moment_Person.objects.create(mid=moment, pid=person, content=content, time=timezone.now())
+        comment = Comment.objects.create(mid=moment, pid=person, content=content, time=timezone.now())
+        return JsonResponse({'code': 0, 'message': '评论添加成功', 'data': {'id': comment.cid}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
 
@@ -99,10 +113,11 @@ def delete_comment(request):
         except json.JSONDecodeError:
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
-        comment = get_object_or_404(Moment_Person, id=id, content__isnull=False)
+        # comment = get_object_or_404(Moment_Person, id=id, content__isnull=False)
+        comment = get_object_or_404(Comment, cid=id)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if comment.pid.pid == person.pid:
+        if person.pid == 0 or comment.pid.pid == person.pid or person.pid == comment.mid.creator.pid:
             comment.delete()
             return JsonResponse({'code': 0, 'message': '评论已删除'})
         else:

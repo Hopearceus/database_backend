@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'entry',
     'moment',
     'picture',
+    'comment',
     
     'corsheaders',
 ]

@@ -181,3 +181,11 @@ def upload_avatar(request):
     else:
         print("adasd")
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)   
+
+def get_person_id(request):
+    if request.method == 'POST':
+        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        person = get_object_or_404(Person, username=username)
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'pid': person.pid}})
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)

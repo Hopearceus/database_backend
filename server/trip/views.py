@@ -250,6 +250,9 @@ def get_record_list(request):
         data = json.loads(request.body)
         tid = data.get('tid')
         entries = Entry.objects.filter(tid=tid)
+        tid = get_object_or_404(Trip, tid=tid)
+        if not Trip_Person.objects.filter(tid=tid, pid=person).exists():
+            return JsonResponse({'code': 403, 'message': '你没有权限查看此行程'}, status=403)
 
         record_list = []
         for entry in entries:
