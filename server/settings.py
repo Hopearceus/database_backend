@@ -10,22 +10,19 @@ APPEND_SLASH = True
 
 SECRET_KEY = 'gyuiofggfreaq7890yhuibt243BUISW9324809&soi$%*)w)ns;DGJ*(u)'
 
-DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.mysql',
-    #     'NAME': 'database',
-    #     'USER': 'test',
-    #     'PASSWORD': '123456',
-    #     'HOST': 'localhost',
-    #     'PORT': '3306',
-    # }
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'db.sqlite3',
-    }
-}
-'''
-from db.config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': 'db.sqlite3',
+#     }
+# }
+import json
+config = json.loads(open('../db.config').read())
+DB_NAME = config['DB_NAME']
+DB_USER = config['DB_USER']
+DB_PASSWORD = config['DB_PASSWORD']
+DB_HOST = config['DB_HOST']
+DB_PORT = config['DB_PORT']
 DATABASES = {
     'default': {
         "ATOMIC_REQUESTS": True,
@@ -37,7 +34,6 @@ DATABASES = {
         'PORT': DB_PORT,
     }
 }
-'''
 # TEMPLATES 配置
 TEMPLATES = [
     {

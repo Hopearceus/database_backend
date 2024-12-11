@@ -26,7 +26,7 @@ def trip_detail(request):
         trip = get_object_or_404(Trip, tid=tid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if not Trip_Person.objects.filter(tid=tid, pid=person).exists():
+        if not trip.isPublic and not Trip_Person.objects.filter(tid=tid, pid=person).exists():
             return JsonResponse({'code': 403, 'message': '你没有权限查看此行程'}, status=403)
 
         trip_data = {
@@ -35,8 +35,8 @@ def trip_detail(request):
             'description': trip.description,
             'creatorId': trip.creator.pid,
             'creatorName': trip.creator.username,
-            'sdate': trip.stime,
-            'tdate': trip.ttime
+            'sdate': trip.stime if Trip_Person.objects.filter(tid=tid, pid=person).exists() else '',
+            'tdate': trip.ttime if Trip_Person.objects.filter(tid=tid, pid=person).exists() else '',
         }
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': trip_data})
     else:
@@ -196,7 +196,7 @@ def get_record_detail(request):
         entry = get_object_or_404(Entry, eid=eid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists():
+        if entry.tid.isPublic or Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists():
             # print(entry.tid.tid)
             # print(data.get('tid'))
             if entry.tid.tid != data.get('tid'):
@@ -206,8 +206,8 @@ def get_record_detail(request):
                 'location': entry.place,
                 'description': entry.description,
                 'recordDate': entry.time.isoformat(),
-                'sdate': entry.tid.stime,
-                'tdate': entry.tid.ttime,
+                'sdate': entry.tid.stime if Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists() else '',
+                'tdate': entry.tid.ttime if Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists() else '',
                 'creatorId': entry.tid.creator.pid,
             }
             return JsonResponse({'code': 0, 'message': '获取成功', 'data': entry_data})
@@ -252,7 +252,7 @@ def get_record_list(request):
         tid = data.get('tid')
         entries = Entry.objects.filter(tid=tid)
         tid = get_object_or_404(Trip, tid=tid)
-        if not Trip_Person.objects.filter(tid=tid, pid=person).exists():
+        if not tid.isPublic and not Trip_Person.objects.filter(tid=tid, pid=person).exists():
             return JsonResponse({'code': 403, 'message': '你没有权限查看此行程'}, status=403)
 
         record_list = []
@@ -261,7 +261,7 @@ def get_record_list(request):
                 'location': entry.place,
                 'eid': entry.eid,
                 'tid': entry.tid.tid,
-                'recordDate': entry.time,
+                'recordDate': entry.time if Trip_Person.objects.filter(tid=tid, pid=person.pid).exists() else '',
                 'location': entry.place,
                 'description': entry.description,
             }

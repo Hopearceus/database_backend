@@ -8,6 +8,7 @@ class Trip(models.Model):
     ttime = models.DateField()
     creator = models.ForeignKey(Person, on_delete=models.CASCADE)
     description = models.TextField()
+    isPublic = models.BooleanField()
 
 class Trip_Person(models.Model):
     tid = models.ForeignKey(Trip, on_delete=models.CASCADE)

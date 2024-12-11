@@ -114,21 +114,18 @@ def get_album_detail(request):
         album = get_object_or_404(Album, aid=aid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if album.pid.pid == person.pid:
-            photo_count = Picture_Album.objects.filter(aid=album.aid).count()
-            album_data = {
-                'aid': album.aid,
-                'albumName': album.name,
-                'description': album.description,
-                'coverUrl': album.cover_url,
-                'photoCount': photo_count,
-                'createdAt': album.time.strftime('%Y-%m-%d %H:%M:%S'),
-                'creatorId': person.pid,
-                'creatorName': person.username
-            }
-            return JsonResponse({'code': 0, 'message': '获取成功', 'data': album_data})
-        else:
-            return JsonResponse({'code': 403, 'message': '你没有权限查看此相册'}, status=403)
+        photo_count = Picture_Album.objects.filter(aid=album.aid).count()
+        album_data = {
+            'aid': album.aid,
+            'albumName': album.name,
+            'description': album.description,
+            'coverUrl': album.cover_url,
+            'photoCount': photo_count,
+            'createdAt': album.time.strftime('%Y-%m-%d %H:%M:%S'),
+            'creatorId': person.pid,
+            'creatorName': person.username
+        }
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': album_data})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
 
@@ -165,23 +162,20 @@ def get_album_photos(request):
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
 
         album = get_object_or_404(Album, aid=aid)
-        username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
-        person = get_object_or_404(Person, username=username)
-        if album.pid.pid == person.pid:
-            photos = Picture_Album.objects.filter(aid=album).values('pid')
-            photos = Picture.objects.filter(pid__in=photos)
-            photo_list = []
-            for photo in photos:
-                photo_data = {
-                    'pid': photo.pid,
-                    'url': photo.url,
-                    'uploadTime': photo.create_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'description': photo.description
-                }
-                photo_list.append(photo_data)
-            return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'photos': photo_list}})
-        else:
-            return JsonResponse({'code': 403, 'message': '你没有权限查看此相册的照片'}, status=403)
+        # username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
+        # person = get_object_or_404(Person, username=username)
+        photos = Picture_Album.objects.filter(aid=album).values('pid')
+        photos = Picture.objects.filter(pid__in=photos)
+        photo_list = []
+        for photo in photos:
+            photo_data = {
+                'pid': photo.pid,
+                'url': photo.url,
+                'uploadTime': photo.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'description': photo.description
+            }
+            photo_list.append(photo_data)
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'photos': photo_list}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
 

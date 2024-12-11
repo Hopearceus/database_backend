@@ -71,6 +71,8 @@ def add_moment(request):
 
         if tid:
             tid = get_object_or_404(Trip, tid=tid)
+            tid.isPublic = True
+            tid.save()
             moment = Moment.objects.create(creator=person, tid=tid, aid=aid, time=timezone.now(), content=content)
         else:
             moment = Moment.objects.create(creator=person, aid=aid, time=timezone.now(), content=content)
