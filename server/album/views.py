@@ -127,9 +127,9 @@ def delete_album(request):
         person = get_object_or_404(Person, username=username)
         if album.pid.pid == person.pid:
             if album.aid == person.default_aid:
-                return JsonResponse({'code': 114514, 'message': '默认相册不允许删除'}, status=403)
+                return JsonResponse({'code': 114514, 'message': '默认相册不允许删除', 'data': {'code': 1}}, status=403)
             album.delete()
-            return JsonResponse({'code': 0, 'message': '相册已删除'})
+            return JsonResponse({'code': 0, 'message': '相册已删除', 'data': {'code': 0}})
         else:
             return JsonResponse({'code': 403, 'message': '你没有权限删除此相册'}, status=403)
     else:
@@ -173,6 +173,7 @@ def update_album(request):
             data = json.loads(request.body)
             aid = data.get('aid')
             description = data.get('description')
+            name = data.get('albumName')
             
         except json.JSONDecodeError:
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
@@ -182,8 +183,20 @@ def update_album(request):
         person = get_object_or_404(Person, username=username)
         if album.pid.pid == person.pid:
             album.description = description
+            album.name = name
             album.save()
-            return JsonResponse({'code': 0, 'message': '相册更新成功'})
+
+            album_data = {
+                'aid': album.aid,
+                'albumName': album.name,
+                'description': album.description,
+                'coverUrl': album.cover_url,
+                'photoCount': photo_count,
+                'createdAt': album.time.strftime('%Y-%m-%d %H:%M:%S'),
+                'creatorId': person.pid,
+                'creatorName': person.username
+            }
+            return JsonResponse({'code': 0, 'message': '相册更新成功', 'data': album_data})
         else:
             return JsonResponse({'code': 403, 'message': '你没有权限更新此相册'}, status=403)
     else:
