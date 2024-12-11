@@ -47,7 +47,7 @@ def get_discover_moments(request):
                 'createTime': moment.time.strftime('%Y-%m-%d %H:%M:%S'),
                 'tid': moment.tid.tid if moment.tid else None,
                 'userAvatar': moment.creator.avatar_url,
-                'images': [[picture.pid.url for picture in Picture_Moment.objects.filter(mid=moment)][0] if Picture_Moment.objects.filter(mid=moment) else None],
+                'images': [[picture.pid.url for picture in Picture_Moment.objects.filter(mid=moment)][0]] if Picture_Moment.objects.filter(mid=moment) else [],
             }
             for moment in moments
         ]
@@ -192,7 +192,8 @@ def get_moment_detail(request):
 
 def search_moment(request):
     if request.method == 'POST':
-        keyword = request.POST.get('keyword')
+        data = json.loads(request.body)
+        keyword = data.get('keyword')
         moments = Moment.objects.filter(content__contains=keyword)
         moment_list = []
         for moment in moments:
