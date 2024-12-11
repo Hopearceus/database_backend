@@ -80,7 +80,8 @@ def get_album_list(request):
             album_list.append(album_data)
         return JsonResponse({'code': 200, 'data': {'albums': album_list}})
     elif request.method == 'POST':
-        pid = request.POST.get('pid')
+        data = json.loads(request.body)
+        pid = data.get('pid')
         person = get_object_or_404(Person, pid=pid)
         albums = Album.objects.filter(pid=person.pid)
 

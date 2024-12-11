@@ -31,7 +31,6 @@ def moment_add_picture(request, mid, pid):
         'redirect_url': reverse('moment_detail', kwargs={'mid': mid})
     })
 
-
 # @login_required
 def get_discover_moments(request):
     if request.method == 'POST':
@@ -48,7 +47,7 @@ def get_discover_moments(request):
                 'createTime': moment.time.strftime('%Y-%m-%d %H:%M:%S'),
                 'tid': moment.tid.tid if moment.tid else None,
                 'userAvatar': moment.creator.avatar_url,
-                'images': [picture.pid.url for picture in Picture_Moment.objects.filter(mid=moment)][0] if Picture_Moment.objects.filter(mid=moment) else None,
+                'images': [[picture.pid.url for picture in Picture_Moment.objects.filter(mid=moment)][0] if Picture_Moment.objects.filter(mid=moment) else None],
             }
             for moment in moments
         ]
@@ -135,7 +134,8 @@ def get_moments(request):
             })
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'moments': moment_list}})
     elif request.method == 'POST':
-        pid = request.POST.get('pid')
+        data = json.loads(request.body)
+        pid = data.get('pid')
         person = get_object_or_404(Person, pid=pid)
         moments = Moment.objects.filter(creator=person)
         moment_list = []

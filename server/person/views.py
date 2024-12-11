@@ -124,7 +124,8 @@ def get_user_profile(request):
         }
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': profile_data})
     elif request.method == 'POST':
-        pid = request.POST.get('pid')
+        data = json.loads(request.body)
+        pid = data.get('pid')
         person = get_object_or_404(Person, pid=pid)
         profile_data = {
             'username': person.username,
