@@ -185,7 +185,7 @@ def update_album(request):
             album.description = description
             album.name = name
             album.save()
-
+            photo_count = Picture_Album.objects.filter(aid=album).count()
             album_data = {
                 'aid': album.aid,
                 'albumName': album.name,

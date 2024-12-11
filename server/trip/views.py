@@ -197,8 +197,8 @@ def get_record_detail(request):
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
         if Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists():
-            print(entry.tid.tid)
-            print(data.get('tid'))
+            # print(entry.tid.tid)
+            # print(data.get('tid'))
             if entry.tid.tid != data.get('tid'):
                 return JsonResponse({'code': 403, 'message': '非本行程记录'}, status=403)
             entry_data = {
@@ -207,7 +207,8 @@ def get_record_detail(request):
                 'description': entry.description,
                 'recordDate': entry.time.isoformat(),
                 'sdate': entry.tid.stime,
-                'tdate': entry.tid.ttime
+                'tdate': entry.tid.ttime,
+                'creatorId': entry.tid.creator.pid,
             }
             return JsonResponse({'code': 0, 'message': '获取成功', 'data': entry_data})
         else:

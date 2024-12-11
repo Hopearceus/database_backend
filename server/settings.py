@@ -24,7 +24,20 @@ DATABASES = {
         'NAME': 'db.sqlite3',
     }
 }
-
+'''
+from db.config import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT
+DATABASES = {
+    'default': {
+        "ATOMIC_REQUESTS": True,
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': DB_NAME,
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
+    }
+}
+'''
 # TEMPLATES 配置
 TEMPLATES = [
     {
