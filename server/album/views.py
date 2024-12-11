@@ -22,6 +22,8 @@ media_root = settings.MEDIA_ROOT
 base_url = settings.base_url
 
 SECRET_KEY = json.loads(open('../key.private').read())['SECRET_KEY']
+import pytz
+local_tz = pytz.timezone('Asia/Shanghai')
 
 # @login_required
 def create_album(request):
@@ -36,13 +38,13 @@ def create_album(request):
         if not album_name:
             return JsonResponse({'code': 400, 'message': '缺少必填字段 albumName'}, status=400)
 
-        album = Album.objects.create(pid=person, name=album_name, description=description, time=timezone.now())
+        album = Album.objects.create(pid=person, name=album_name, description=description, time=timezone.now().astimezone(local_tz))
         
         cover_image = request.FILES.get('coverImage')
         if cover_image:
             cover_name = FileSystemStorage(location=os.path.join(media_root, username, 'album/', album.name)).save(cover_image.name, cover_image)
             cover_url = base_url + settings.MEDIA_URL + username + '/album/' + album.name + '/' + cover_name
-            cover_picture = Picture.objects.create(creator=person, url=cover_url, file_name=cover_name, create_time=timezone.now())
+            cover_picture = Picture.objects.create(creator=person, url=cover_url, file_name=cover_name, create_time=timezone.now().astimezone(local_tz))
             Picture_Album.objects.create(pid=cover_picture, aid=album)
             album.cover_url = cover_url
             album.save()
@@ -50,7 +52,7 @@ def create_album(request):
         for photo in photos:
             photo_name = FileSystemStorage(location=os.path.join(media_root, username, 'album/', album.name)).save(photo.name, photo)
             photo_url = base_url + settings.MEDIA_URL + username + '/album/' + album.name + '/' + photo_name
-            picture = Picture.objects.create(creator=person, url=photo_url, file_name=photo_name, create_time=timezone.now())
+            picture = Picture.objects.create(creator=person, url=photo_url, file_name=photo_name, create_time=timezone.now().astimezone(local_tz))
             Picture_Album.objects.create(pid=picture, aid=album)
 
         return JsonResponse({'code': 0, 'message': '相册创建成功', 'data': {'aid': album.aid}})
@@ -122,8 +124,8 @@ def get_album_detail(request):
             'coverUrl': album.cover_url,
             'photoCount': photo_count,
             'createdAt': album.time.strftime('%Y-%m-%d %H:%M:%S'),
-            'creatorId': person.pid,
-            'creatorName': person.username
+            'creatorId': album.pid.pid,
+            'creatorName': album.pid.username
         }
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': album_data})
     else:
@@ -142,7 +144,7 @@ def delete_album(request):
         album = get_object_or_404(Album, aid=aid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if album.pid.pid == person.pid:
+        if person.pid == 0 or album.pid.pid == person.pid:
             if album.aid == person.default_aid:
                 return JsonResponse({'code': 114514, 'message': '默认相册不允许删除', 'data': {'code': 1}}, status=403)
             album.delete()
@@ -195,7 +197,7 @@ def update_album(request):
         album = get_object_or_404(Album, aid=aid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if album.pid.pid == person.pid:
+        if person.pid == 0 or album.pid.pid == person.pid:
             album.description = description
             album.name = name
             album.save()
@@ -231,7 +233,7 @@ def update_photo_description(request):
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
         
-        if picture.creator.pid == person.pid:
+        if person.pid == 0 or picture.creator.pid == person.pid:
             picture.description = description
             picture.save()
             return JsonResponse({'code': 0, 'message': '照片描述更新成功'})
@@ -279,11 +281,11 @@ def upload_photos(request):
         album = get_object_or_404(Album, aid=aid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if album.pid.pid == person.pid:
+        if person.pid == 0 or album.pid.pid == person.pid:
             for photo in photos:
                 photo_name = FileSystemStorage(location=os.path.join(media_root,username,'album/',album.name)).save(photo.name,photo)
                 photo_url = base_url + settings.MEDIA_URL + username + '/album/' + album.name + '/' + photo_name
-                picture = Picture.objects.create(creator=person, url=photo_url, file_name=photo_name, image=photo, create_time=timezone.now())
+                picture = Picture.objects.create(creator=person, url=photo_url, file_name=photo_name, image=photo, create_time=timezone.now().astimezone(local_tz))
                 Picture_Album.objects.create(pid=picture, aid=album)
             return JsonResponse({'code': 0, 'message': '照片上传成功'})
         else:

@@ -19,7 +19,8 @@ import settings
 media_root = settings.MEDIA_ROOT
 base_url = settings.base_url
 SECRET_KEY = json.loads(open('../key.private').read())['SECRET_KEY']
-
+import pytz
+local_tz = pytz.timezone('Asia/Shanghai')
 # @login_required
 def moment_add_picture(request, mid, pid):
     pm = Picture_Moment.objects.create(mid=mid, pid=pid)
@@ -73,15 +74,15 @@ def add_moment(request):
             tid = get_object_or_404(Trip, tid=tid)
             tid.isPublic = True
             tid.save()
-            moment = Moment.objects.create(creator=person, tid=tid, aid=aid, time=timezone.now(), content=content)
+            moment = Moment.objects.create(creator=person, tid=tid, aid=aid, time=timezone.now().astimezone(local_tz), content=content)
         else:
-            moment = Moment.objects.create(creator=person, aid=aid, time=timezone.now(), content=content)
+            moment = Moment.objects.create(creator=person, aid=aid, time=timezone.now().astimezone(local_tz), content=content)
         
         images = request.FILES.getlist('images')
         for image in images:
             picture_name = FileSystemStorage(location=os.path.join(media_root, username, 'album/', aid.name)).save(image.name, image)
             picture_url = base_url + settings.MEDIA_URL + username + '/album/' + aid.name + '/' + picture_name
-            picture = Picture.objects.create(creator=person, url=picture_url, file_name=picture_name, create_time=timezone.now())
+            picture = Picture.objects.create(creator=person, url=picture_url, file_name=picture_name, create_time=timezone.now().astimezone(local_tz))
             picture_moment = Picture_Moment.objects.create(pid=picture, mid=moment)
             picture_album = Picture_Album.objects.create(pid=picture, aid=aid)
         
@@ -101,7 +102,7 @@ def delete_moment(request):
         moment = get_object_or_404(Moment, mid=mid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if moment.creator.pid == person.pid:
+        if person.pid == 0 or moment.creator.pid == person.pid:
             moment.delete()
             return JsonResponse({'code': 0, 'message': '动态已删除'})
         else:

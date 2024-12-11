@@ -9,6 +9,8 @@ from .forms import EntryForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 
+import pytz
+
 # @login_required
 def entry_creation(request, tid):
     if request.method == 'POST':
@@ -16,7 +18,8 @@ def entry_creation(request, tid):
         if form.is_valid():
             entry = form.save(commit=False)
             entry.tid = tid
-            entry.time = timezone.now()
+            local_tz = pytz.timezone('Asia/Shanghai')
+            entry.time = timezone.now().astimezone(local_tz)
 
             # dfa_filter = DFAFilter()
             # filtered_place, has_sensitive_word_place = dfa_filter.filter(entry.place)
@@ -54,7 +57,7 @@ def entry_deletion(request, eid):
     entry = get_object_or_404(Entry, eid=eid)
     if request.method == 'POST':
         trip = get_object_or_404(Trip, tid=entry.tid)
-        if trip.creator == request.person.pid:
+        if request.person.pid == 0 or trip.creator == request.person.pid:
             entry.delete()
             return JsonResponse({
                 'success': True,
@@ -93,7 +96,7 @@ def entry_detail(request, eid):
 def entry_modification(request, eid):
     entry = get_object_or_404(Entry, eid=eid)
     if request.method == 'POST':
-        if not Trip_Person.objects.filter(tid=entry.tid, pid=request.person.pid).exists():
+        if request.person.pid != 0 and not Trip_Person.objects.filter(tid=entry.tid, pid=request.person.pid).exists():
             return JsonResponse({
                 'success': False,
                 'message': "你没有权限修改此记录"

@@ -12,6 +12,8 @@ from person.models import Person
 from .models import Picture, Picture_Album
 from trip.models import Trip, Trip_Person
 # from sensitive_word_filter import DFAFilter
+import pytz
+local_tz = pytz.timezone('Asia/Shanghai')
 
 # @login_required
 def picture_upload(request):
@@ -20,10 +22,10 @@ def picture_upload(request):
         if form.is_valid():
             picture = form.save(commit=False)
             picture.creator = request.person.pid
-            picture.create_time = timezone.now()
+            picture.create_time = timezone.now().astimezone(local_tz)
             picture.save()
 
-            picture_album = Picture_Album(pid=picture.pid, aid=request.person.default_aid, moved_time=timezone.now())
+            picture_album = Picture_Album(pid=picture.pid, aid=request.person.default_aid, moved_time=timezone.now().astimezone(local_tz))
             picture_album.save()
 
             return JsonResponse({

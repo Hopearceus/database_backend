@@ -60,7 +60,7 @@ def create_trip(request):
 
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        trip = Trip.objects.create(name=name, description=description, stime=stime, ttime=ttime, creator=person)
+        trip = Trip.objects.create(name=name, description=description, stime=stime, ttime=ttime, creator=person, isPublic=False)
         Trip_Person.objects.create(tid=trip, pid=person, notes='')
 
         return JsonResponse({'code': 0, 'message': '行程创建成功', 'data': {'tid': trip.tid}})
@@ -80,7 +80,7 @@ def delete_trip(request):
         trip = get_object_or_404(Trip, tid=tid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if trip.creator.pid == person.pid:
+        if person.pid == 0 or trip.creator.pid == person.pid:
             trip.delete()
             return JsonResponse({'code': 0, 'message': '行程已删除'})
         else:
@@ -126,7 +126,7 @@ def update_trip(request):
         trip = get_object_or_404(Trip, tid=tid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if trip.creator.pid == person.pid:
+        if person.pid == 0 or trip.creator.pid == person.pid:
             trip.name = name if name else trip.name
             trip.description = description if description else trip.description
             trip.stime = sdate if sdate else trip.stime
@@ -176,7 +176,7 @@ def delete_trip_record(request):
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
         tid = data.get('tid')
-        if entry.tid.creator.pid == person.pid and entry.tid.tid == tid:
+        if person.pid == 0 or entry.tid.creator.pid == person.pid and entry.tid.tid == tid:
             entry.delete()
             return JsonResponse({'code': 0, 'message': '记录已删除'})
         else:
@@ -232,7 +232,7 @@ def update_record(request):
         entry = get_object_or_404(Entry, eid=eid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists():
+        if person.pid == 0 or Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists():
             entry.place = location if location else entry.place
             entry.description = description if description else entry.description
             entry.time = time if time else entry.time

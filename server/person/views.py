@@ -11,18 +11,12 @@ from django.utils import timezone
 
 import json
 import jwt
+import pytz
 
 SECRET_KEY = json.loads(open('../key.private').read())['SECRET_KEY']
-
+local_tz = pytz.timezone('Asia/Shanghai')
 def register_view(request):
     if request.method == 'POST':
-        # default_aid = request.POST.get('default_aid', '')
-        # if not pid or not default_aid:
-        #     return JsonResponse({'success': False, 'message': '缺少 pid 或 default_aid 参数'}, status=400)
-
-
-        # album = Album(pid=pid, aid=default_aid, description='默认相册', time=timezone.now())
-        # album.save()
         try:
             data = json.loads(request.body)
             username = data.get('username')
@@ -39,7 +33,7 @@ def register_view(request):
         
         user = Person.objects.create_user(username=username, email=email, password=password)
         from album.models import Album
-        default_album = Album.objects.create(pid=user, description='默认相册', time=timezone.now())
+        default_album = Album.objects.create(pid=user, description='默认相册', time=timezone.now().astimezone(local_tz))
         user.default_aid = default_album.aid
         user.save()
         login(request, user)
@@ -66,10 +60,10 @@ def login_view(request):
         person = authenticate(request, username=username, password=password)
         if person is not None:
             login(request, person)
-            token = jwt.encode({'username': person.username, 'exp': timezone.now() + timezone.timedelta(hours=1)}, SECRET_KEY, algorithm='HS256')
+            token = jwt.encode({'username': person.username, 'exp': timezone.now().astimezone(local_tz) + timezone.timedelta(hours=1)}, SECRET_KEY, algorithm='HS256')
             data = {
                 'token': token,
-                'expires': (timezone.now() + timezone.timedelta(hours=1)).isoformat()
+                'expires': (timezone.now().astimezone(local_tz) + timezone.timedelta(hours=1)).isoformat()
             }
             return JsonResponse({'code': 0, 'message': '登录成功', 'data': data})
         else:
@@ -185,7 +179,7 @@ def upload_avatar(request):
         avatar = request.FILES.get('avatar')
         avatar_name = FileSystemStorage(location=os.path.join(media_root, username, 'avatar/')).save(avatar.name, avatar)
         avatar_url = base_url + settings.MEDIA_URL + username + '/avatar/' + avatar_name
-        Picture.objects.create(creator=person, url=avatar_url, description='头像', create_time=timezone.now(), file_name=avatar_name)
+        Picture.objects.create(creator=person, url=avatar_url, description='头像', create_time=timezone.now().astimezone(local_tz), file_name=avatar_name)
         if avatar:
             person.avatar_url = avatar_url
             person.save()
