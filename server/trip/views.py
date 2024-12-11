@@ -29,7 +29,6 @@ def trip_detail(request):
         if not Trip_Person.objects.filter(tid=tid, pid=person).exists():
             return JsonResponse({'code': 403, 'message': '你没有权限查看此行程'}, status=403)
 
-        # entry_list = Entry.objects.filter(tid=tid).values('eid', 'title')
         trip_data = {
             'tid': trip.tid,
             'tripName': trip.name,
@@ -146,7 +145,6 @@ def add_trip_record(request):
         try:
             data = json.loads(request.body)
             tid = data.get('tid')
-            # title = data.get('title')
             place = data.get('location')
             time = data.get('recordDate')
             description = data.get('description')
@@ -177,7 +175,8 @@ def delete_trip_record(request):
         entry = get_object_or_404(Entry, eid=eid)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
-        if entry.tid.creator.pid == person.pid:
+        tid = data.get('tid')
+        if entry.tid.creator.pid == person.pid and entry.tid.tid == tid:
             entry.delete()
             return JsonResponse({'code': 0, 'message': '记录已删除'})
         else:
@@ -198,11 +197,17 @@ def get_record_detail(request):
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
         if Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists():
+            print(entry.tid.tid)
+            print(data.get('tid'))
+            if entry.tid.tid != data.get('tid'):
+                return JsonResponse({'code': 403, 'message': '非本行程记录'}, status=403)
             entry_data = {
                 'eid': entry.eid,
-                'title': entry.title,
+                'location': entry.place,
                 'description': entry.description,
-                'time': entry.time.isoformat()
+                'recordDate': entry.time.isoformat(),
+                'sdate': entry.tid.stime,
+                'tdate': entry.tid.ttime
             }
             return JsonResponse({'code': 0, 'message': '获取成功', 'data': entry_data})
         else:
@@ -217,7 +222,8 @@ def update_record(request):
         try:
             data = json.loads(request.body)
             eid = data.get('eid')
-            title = data.get('title')
+            location = data.get('location')
+            time = data.get('recordDate')
             description = data.get('description')
         except json.JSONDecodeError:
             return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
@@ -226,8 +232,9 @@ def update_record(request):
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
         if Trip_Person.objects.filter(tid=entry.tid, pid=person.pid).exists():
-            entry.title = title
-            entry.description = description
+            entry.place = location if location else entry.place
+            entry.description = description if description else entry.description
+            entry.time = time if time else entry.time
             entry.save()
             return JsonResponse({'code': 0, 'message': '记录更新成功'})
         else:
@@ -240,14 +247,14 @@ def get_record_list(request):
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
 
-        trip_persons = Trip_Person.objects.filter(pid=person.pid)
-        trip_ids = [tp.tid for tp in trip_persons]
-        entries = Entry.objects.filter(tid__in=trip_ids)
+        data = json.loads(request.body)
+        tid = data.get('tid')
+        entries = Entry.objects.filter(tid=tid)
 
         record_list = []
         for entry in entries:
             record_data = {
-                'title': entry.title,
+                'location': entry.place,
                 'eid': entry.eid,
                 'tid': entry.tid.tid,
                 'recordDate': entry.time,

@@ -8,3 +8,4 @@ class Entry(models.Model):
     time = models.DateField()
     place = models.TextField()
     description = models.TextField()
+    title = models.CharField(max_length=255)
