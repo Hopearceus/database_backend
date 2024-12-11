@@ -4,7 +4,8 @@ from person.models import Person
 class Trip(models.Model):
     tid = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
-    time = models.DateTimeField()
+    stime = models.DateField()
+    ttime = models.DateField()
     creator = models.ForeignKey(Person, on_delete=models.CASCADE)
     description = models.TextField()
 
