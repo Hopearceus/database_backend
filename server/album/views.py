@@ -257,7 +257,7 @@ def delete_photo(request):
         person = get_object_or_404(Person, username=username)
         album = Picture_Album.objects.filter(pid=picture).values('aid')
         album = Album.objects.get(aid=album[0]['aid'])
-        if picture.creator.pid == person.pid:
+        if person.pid == 0 or picture.creator.pid == person.pid:
             if album.cover_url == picture.url:
                 album.cover_url = ''
                 album.save()
