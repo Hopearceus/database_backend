@@ -105,6 +105,10 @@ from django.contrib.auth.decorators import login_required
 
 def get_user_profile(request):
     if request.method == 'GET':
+        authorization_header = request.headers.get('Authorization')
+        if not authorization_header:
+            return JsonResponse({'code': 400, 'message': '缺少 Authorization 头'}, status=400)
+
         # person = get_object_or_404(Person, pid=request.user.id)
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
