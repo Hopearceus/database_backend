@@ -123,6 +123,18 @@ def get_user_profile(request):
             'avatar': person.avatar_url if person.avatar_url else None,
         }
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': profile_data})
+    elif request.method == 'POST':
+        person = get_object_or_404(Person, pid=request.POST.get('pid'))
+        profile_data = {
+            'username': person.username,
+            'email': person.email,
+            'phone': person.phone,
+            'description': person.description,
+            'birthday': person.birthday,
+            'gender': person.gender,
+            'avatar': person.avatar_url if person.avatar_url else None,
+        }
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': profile_data})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
 

@@ -47,7 +47,6 @@ def picture_upload(request):
             'message': '无效请求，必须使用 POST 方法'
         }, status=405)
 
-
 def picture_deletion(request, picture_id):
     picture = get_object_or_404(Picture, pid=picture_id)
     if request.method == 'POST':
@@ -66,7 +65,6 @@ def picture_deletion(request, picture_id):
         'success': False,
         'message': '请求无效'
     }, status=400)
-
 
 def picture_detail(request, picture_id):
     picture = get_object_or_404(Picture, pid=picture_id)

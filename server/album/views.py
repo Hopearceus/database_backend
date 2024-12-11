@@ -59,7 +59,7 @@ def create_album(request):
 
 # @login_required
 def get_album_list(request):
-    if request.method == 'POST':
+    if request.method == 'GET':
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
         albums = Album.objects.filter(pid=person.pid)
@@ -74,11 +74,30 @@ def get_album_list(request):
                 'coverUrl': album.cover_url,
                 'photoCount': photo_count,
                 'createdAt': album.time.strftime('%Y-%m-%d %H:%M:%S'),
-                'creatorId': person.pid,
-                'creatorName': person.username
+                'creatorId': album.pid.pid,
+                'creatorName': album.pid.username
             }
             album_list.append(album_data)
+        return JsonResponse({'code': 200, 'data': {'albums': album_list}})
+    elif request.method == 'POST':
+        pid = request.POST.get('pid')
+        person = get_object_or_404(Person, pid=pid)
+        albums = Album.objects.filter(pid=person.pid)
 
+        album_list = []
+        for album in albums:
+            photo_count = Picture_Album.objects.filter(aid=album.aid).count()
+            album_data = {
+                'aid': album.aid,
+                'albumName': album.name,
+                'description': album.description,
+                'coverUrl': album.cover_url,
+                'photoCount': photo_count,
+                'createdAt': album.time.strftime('%Y-%m-%d %H:%M:%S'),
+                'creatorId': album.pid.pid,
+                'creatorName': album.pid.username
+            }
+            album_list.append(album_data)
         return JsonResponse({'code': 200, 'data': {'albums': album_list}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)

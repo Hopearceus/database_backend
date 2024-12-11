@@ -10,6 +10,6 @@ urlpatterns = [
     path('album/', include('album.urls')),
     path('entry/', include('entry.urls')),
     path('moment/', include('moment.urls')),
-    path('picture', include('picture.urls')),
-    path('comment', include('comment.urls')),
+    path('picture/', include('picture.urls')),
+    path('comment/', include('comment.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

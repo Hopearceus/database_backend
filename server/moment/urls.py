@@ -10,4 +10,5 @@ urlpatterns = [
     path('discover/', views.get_discover_moments, name='get_discover_moments'),
     path('add_picture/<int:mid>/<int:pid>/', views.moment_add_picture, name='moment_add_picture'),
     path('discover/', views.get_discover_moments, name='get_discover_moments'),
+    path('search/', views.search_moment, name='search_moment'),
 ]

@@ -1,3 +1,15 @@
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from person.models import Person
+from moment.models import Moment
+from comment.models import Comment
+import json
+import jwt
+
+
+SECRET_KEY = SECRET_KEY = json.loads(open('../key.private').read())['SECRET_KEY']
+
 def get_notices(request):
     if request.method == 'POST':
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
@@ -5,16 +17,20 @@ def get_notices(request):
         moments = Moment.objects.filter(creator=person)
         comments = Comment.objects.filter(mid__in=moments)
         notice_list = []
+        epoch = 0
         for comment in comments:
             notice_list.append({
                 'cid': comment.cid,
                 'mid': comment.mid.mid,
                 'content': comment.content,
                 'userId': comment.pid.pid,
-                'username': comment.pid.username,
+                'userName': comment.pid.username,
                 'userAvatar': comment.pid.avatar_url,
                 'createTime': comment.time.strftime('%Y-%m-%d %H:%M:%S')
             })
+            epoch = epoch + 1
+            if epoch == 10:
+                break
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'notices': notice_list}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)

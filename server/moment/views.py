@@ -35,14 +35,10 @@ def moment_add_picture(request, mid, pid):
 # @login_required
 def get_discover_moments(request):
     if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            page = data.get('page', 1)
-            page_size = data.get('page_size', 10)
-        except json.JSONDecodeError:
-            return JsonResponse({'code': 400, 'message': '请求体不是有效的 JSON 字符串'}, status=400)
-
+        page = int(request.POST.get('page', 1))
+        page_size = 9
         moments = Moment.objects.all().order_by('-time')[page_size * (page - 1):page_size * page]
+        # moments = Moment.objects.all().order_by('-time')
         moments_data = [
             {
                 'mid': moment.mid,
@@ -51,6 +47,8 @@ def get_discover_moments(request):
                 'content': moment.content,
                 'createTime': moment.time.strftime('%Y-%m-%d %H:%M:%S'),
                 'tid': moment.tid.tid if moment.tid else None,
+                'userAvatar': moment.creator.avatar_url,
+                'images': [picture.pid.url for picture in Picture_Moment.objects.filter(mid=moment)][0] if Picture_Moment.objects.filter(mid=moment) else None,
             }
             for moment in moments
         ]
@@ -112,12 +110,34 @@ def delete_moment(request):
 
 # @login_required
 def get_moments(request):
-    if request.method == 'POST':
+    if request.method == 'GET':
         username = jwt.decode(request.headers['Authorization'].split(' ')[1], SECRET_KEY, algorithms=['HS256'])['username']
         person = get_object_or_404(Person, username=username)
         moments = Moment.objects.filter(creator=person)
         # images = Picture_Moment.objects.filter(mid__in=[moment for moment in moments]).values('pid')
         # images = Picture.objects.filter(pid__in=[image for image in images]).values('url')
+        moment_list = []
+        for moment in moments:
+            images = Picture_Moment.objects.filter(mid=moment.mid)
+            images = Picture.objects.filter(pid__in=images.values('pid'))
+            moment_list.append({
+                'mid': moment.mid,
+                'content': moment.content,
+                'createTime': moment.time.strftime('%Y-%m-%d %H:%M:%S'),
+                'tripId': moment.tid.tid if moment.tid else None,
+                'tripName': moment.tid.name if moment.tid else None,
+                'userId': moment.creator.pid,
+                'username': moment.creator.username,
+                'userAvatar': moment.creator.avatar_url,
+                'albumId': moment.aid.aid,
+                'albumName': moment.aid.name,
+                'images': [image.url for image in images]
+            })
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'moments': moment_list}})
+    elif request.method == 'POST':
+        pid = request.POST.get('pid')
+        person = get_object_or_404(Person, pid=pid)
+        moments = Moment.objects.filter(creator=person)
         moment_list = []
         for moment in moments:
             images = Picture_Moment.objects.filter(mid=moment.mid)
@@ -165,5 +185,30 @@ def get_moment_detail(request):
             'images': [image.url for image in images]
         }
         return JsonResponse({'code': 0, 'message': '获取成功', 'data': moment_data})
+    else:
+        return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
+
+def search_moment(request):
+    if request.method == 'POST':
+        keyword = request.POST.get('keyword')
+        moments = Moment.objects.filter(content__contains=keyword)
+        moment_list = []
+        for moment in moments:
+            images = Picture_Moment.objects.filter(mid=moment.mid)
+            images = Picture.objects.filter(pid__in=images.values('pid'))
+            moment_list.append({
+                'mid': moment.mid,
+                'content': moment.content,
+                'createTime': moment.time.strftime('%Y-%m-%d %H:%M:%S'),
+                'tripId': moment.tid.tid if moment.tid else None,
+                'tripName': moment.tid.name if moment.tid else None,
+                'userId': moment.creator.pid,
+                'username': moment.creator.username,
+                'userAvatar': moment.creator.avatar_url,
+                'albumId': moment.aid.aid,
+                'albumName': moment.aid.name,
+                'images': [image.url for image in images]
+            })
+        return JsonResponse({'code': 0, 'message': '获取成功', 'data': {'moments': moment_list}})
     else:
         return JsonResponse({'code': 405, 'message': '请求方法不允许'}, status=405)
