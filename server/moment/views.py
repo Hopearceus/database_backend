@@ -13,7 +13,9 @@ from trip.models import Trip
 from comment.models import Comment
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from difflib import SequenceMatcher  # 用于相似度匹配
 import jwt
+import jieba
 
 import settings
 media_root = settings.MEDIA_ROOT
@@ -35,7 +37,8 @@ def moment_add_picture(request, mid, pid):
 # @login_required
 def get_discover_moments(request):
     if request.method == 'POST':
-        page = int(request.POST.get('page', 1))
+        data = json.loads(request.body)
+        page = int(data.get('page', 1))
         page_size = 9
         moments = Moment.objects.all().order_by('-time')[page_size * (page - 1):page_size * page]
         # moments = Moment.objects.all().order_by('-time')
@@ -195,9 +198,33 @@ def search_moment(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         keyword = data.get('keyword')
-        moments = Moment.objects.filter(content__contains=keyword)
+        # moments = Moment.objects.filter(content__contains=keyword)
+
+        keyword_tokens = jieba.lcut(keyword)
+        print(keyword_tokens)
+
+        # 第一层匹配：通过 `icontains` 模糊匹配分词后的每个词
+        primary_matches = Moment.objects.filter(
+            content__icontains=keyword_tokens[0]
+        )
+        for token in keyword_tokens[1:]:
+            primary_matches = primary_matches | Moment.objects.filter(content__icontains=token)
+
+        print(primary_matches)
+        primary_matches = primary_matches.distinct()
+
+        # 第二层匹配：计算相似度（仅对初步筛选后的记录计算）
+        similar_matches = []
+        for moment in primary_matches:
+            similarity = SequenceMatcher(None, keyword, moment.content).ratio()
+            similar_matches.append((similarity, moment))
+
+        # 排序：根据相似度降序排序
+        similar_matches = sorted(similar_matches, key=lambda x: x[0], reverse=True)
+        print(similar_matches)
+
         moment_list = []
-        for moment in moments:
+        for similarity, moment in similar_matches:
             images = Picture_Moment.objects.filter(mid=moment.mid)
             images = Picture.objects.filter(pid__in=images.values('pid'))
             moment_list.append({
